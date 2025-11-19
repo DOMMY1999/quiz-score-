@@ -4,40 +4,30 @@ import os
 
 st.set_page_config(page_title="RESOVATE 2025", layout="wide")
 
-# -------------------------------- HEADER WITH LOGOS + STYLING -------------------------------
+# -------------------------------- HEADER WITH LOGOS --------------------------------
 st.markdown("""
 <style>
-/* Main title background */
-.header-box {
-    background: linear-gradient(90deg, #0072ff 0%, #00c6ff 100%);
-    padding: 20px;
-    border-radius: 12px;
-    text-align: center;
-    color: white;
-    margin-bottom: 20px;
+.logo-img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }
-
-/* Score card styling */
 .score-card {
     background-color: #f8f9fa;
-    padding: 15px;
+    padding: 10px;
     border-radius: 12px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
     margin-bottom: 20px;
 }
-
-/* Total score badge */
 .total-badge {
     background: #0078ff;
-    padding: 8px 14px;
+    padding: 5px 10px;
     border-radius: 8px;
     color: white;
     display: inline-block;
-    font-size: 18px;
-    margin-top: 10px;
+    font-size: 16px;
+    margin-top: 5px;
 }
-
-/* Input boxes small */
 .small-input input {
     border-radius: 10px !important;
     text-align: center;
@@ -45,94 +35,77 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --------------------------------- LOGO ROW --------------------------------------
-left_col, mid_col, right_col = st.columns([1, 3, 1])
+# ---------------------------- LOGO ROW --------------------------------
+left_col, mid_col, right_col = st.columns([1, 2, 1])
+
+
 
 with left_col:
-    st.image("logo_left.png", width=110)
+    st.image("logo_left.png", width=150)  # LEFT LOGO
 
 with mid_col:
-    st.markdown("""
-        <div class='header-box'>
-            <h1>RESOVATE 2025</h1>
-            <h3>Yenepoya Research Centre</h3>
-        </div>
-    """, unsafe_allow_html=True)
+    st.image("resovate_logo.jpeg", width=400)  # CENTER LOGO, bigger
 
 with right_col:
-    st.image("logo_right.png", width=110)
+    st.image("logo_right.png", width=150)  # RIGHT LOGO
 
-# --------------------------------- SCORE FILE ------------------------------------
-EXCEL_FILE = "scores.xlsx"
 
-if not os.path.exists(EXCEL_FILE):
-    df = pd.DataFrame()
-    df.to_excel(EXCEL_FILE, index=False)
+# ---------------------------- SESSION STATE --------------------------------
+if "team_names" not in st.session_state:
+    st.session_state.team_names = [f"Team {i}" for i in range(1, 11)]
 
-# --------------------------------- SESSION STATE ---------------------------------
-if "round" not in st.session_state:
-    st.session_state.round = 1
+NUM_TEAMS = 10
+NUM_ROUNDS = 10
+NUM_BOXES = 10
+EXCEL_FILE = "RESOVATE_scores.xlsx"
 
-if "num_teams" not in st.session_state:
-    st.session_state.num_teams = 4
+# ---------------------------- TEAM NAMES INPUT --------------------------------
+st.markdown("## ✏️ Enter Team Names")
+team_cols = st.columns(NUM_TEAMS)
+for i in range(NUM_TEAMS):
+    st.session_state.team_names[i] = team_cols[i].text_input(
+        f"Team {i+1} Name",
+        value=st.session_state.team_names[i],
+        key=f"team_name_{i}"
+    )
 
-# --------------------------------- ROUND SECTION ---------------------------------
-st.markdown(f"## 🎯 Round {st.session_state.round}")
+# ---------------------------- ROUND INPUT TABLES --------------------------------
+st.markdown("## 🎯 Enter Scores for Each Round")
 
-st.session_state.num_teams = st.number_input(
-    "Number of Teams:",
-    min_value=1, max_value=20,
-    value=st.session_state.num_teams
-)
+# Dictionary to store round scores
+round_scores = {}
 
-team_scores = {}
-st.write("")
+for r in range(1, NUM_ROUNDS + 1):
+    with st.expander(f"Round {r}", expanded=True):
+        round_scores[r] = {}
+        # Create table input for 10 teams × 10 boxes
+        for t in range(NUM_TEAMS):
+            st.markdown(f"### {st.session_state.team_names[t]}")
+            cols = st.columns(NUM_BOXES)
+            scores = []
+            for b in range(NUM_BOXES):
+                val = cols[b].text_input(
+                    "", key=f"round{r}_team{t}_box{b}", placeholder="0", label_visibility="collapsed"
+                )
+                val = val.strip()
+                if val == "":
+                    val = "0"
+                scores.append(int(val))
+            total = sum(scores)
+            round_scores[r][st.session_state.team_names[t]] = scores + [total]
+            st.markdown(f"<div class='total-badge'>Total: {total}</div>", unsafe_allow_html=True)
 
-# --------------------------------- TEAM SCORE UI --------------------------------
-for t in range(1, st.session_state.num_teams + 1):
-
-    st.markdown(f"### 🟦 Team {t}")
-    st.markdown("<div class='score-card'>", unsafe_allow_html=True)
-
-    cols = st.columns(10)
-    scores = []
-
-    for i in range(10):
-        with cols[i]:
-            val = st.text_input(
-                "",
-                key=f"team{t}_box{i}_round{st.session_state.round}",
-                placeholder="0",
-                label_visibility="collapsed"
-            )
-            if val.strip() == "":
-                val = "0"
-
-            scores.append(int(val))
-
-    total = sum(scores)
-    team_scores[f"Team {t}"] = total
-
-    st.markdown(f"<div class='total-badge'>Total Score: {total}</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# -------------------------------- SAVE BUTTON ------------------------------------
-if st.button("💾 Save This Round", use_container_width=True):
-
-    old_df = pd.read_excel(EXCEL_FILE)
-
-    new_row = {"Round": st.session_state.round}
-    for t in range(1, st.session_state.num_teams + 1):
-        new_row[f"Team {t}"] = team_scores[f"Team {t}"]
-
-    new_df = pd.concat([old_df, pd.DataFrame([new_row])], ignore_index=True)
-    new_df.to_excel(EXCEL_FILE, index=False)
-
-    st.session_state.round += 1
-
-    st.success("Round saved successfully!")
-    st.rerun()
-
-# -------------------------------- SCORE TABLE ------------------------------------
-st.markdown("## 📊 All Rounds Scoreboard")
-st.dataframe(pd.read_excel(EXCEL_FILE), use_container_width=True)
+# ---------------------------- SAVE BUTTON --------------------------------
+if st.button("💾 Save All Rounds"):
+    # Create Excel writer
+    with pd.ExcelWriter(EXCEL_FILE, engine="openpyxl") as writer:
+        for r in range(1, NUM_ROUNDS + 1):
+            data = []
+            for t_name in st.session_state.team_names:
+                row = round_scores[r][t_name]
+                # Add total as last column
+                data.append([t_name] + row)
+            columns = ["Team Name"] + [f"Score {i+1}" for i in range(NUM_BOXES)] + ["Total"]
+            df = pd.DataFrame(data, columns=columns)
+            df.to_excel(writer, sheet_name=f"Round {r}", index=False)
+    st.success(f"All rounds saved to {EXCEL_FILE} successfully!")
