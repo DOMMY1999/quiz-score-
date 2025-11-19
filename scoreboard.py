@@ -109,3 +109,13 @@ if st.button("💾 Save All Rounds"):
             df = pd.DataFrame(data, columns=columns)
             df.to_excel(writer, sheet_name=f"Round {r}", index=False)
     st.success(f"All rounds saved to {EXCEL_FILE} successfully!")
+
+# -------------------------------- DOWNLOAD EXCEL BUTTON --------------------------------
+if os.path.exists(EXCEL_FILE):
+    with open(EXCEL_FILE, "rb") as f:
+        st.download_button(
+            label="📥 Download Scoreboard as Excel",
+            data=f,
+            file_name="RESOVATE_2025_Scoreboard.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
